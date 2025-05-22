@@ -37,7 +37,7 @@ Spring Boot와 JPA를 개인적으로 공부하며 만든 학습용 게시판이
 * 회원가입
 ![image](https://github.com/user-attachments/assets/442c4037-3cdc-4d0e-a437-a525e70a5e02)
 
-* 로그인
+* 로그인</br>
 ![image](https://github.com/user-attachments/assets/52d51e74-8a25-41e8-9b0b-7b9a886cf938)
 
 * 글 목록
