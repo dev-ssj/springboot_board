@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>글 작성 페이지</title>
+  <!-- 부트스트랩 CSS 링크 -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<style>
+  .image-preview li {
+    list-style: none;
+    display: inline-block;
+    margin-right: 10px;
+    position: relative;
+  }
+  .image-preview img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+  }
+  .remove-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 2px 5px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+
+  .representative-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #007bff;
+    color: white;
+    padding: 2px 5px;
+    font-size: 12px;
+    border-radius: 0 0 5px 0;
+  }
+</style>
+<body>
+
+<div class="container mt-5">
+  <h2>글 작성</h2>
+  <form action="/save" method="POST" enctype="multipart/form-data" name="form" id="form">
+    <!-- 제목 입력 필드 -->
+    <div class="form-group">
+      <label for="title">제목</label>
+      <input type="text" class="form-control" id="title" name="title" placeholder="제목을 입력하세요">
+    </div>
+
+    <!-- 본문 입력 필드 -->
+    <div class="form-group">
+      <label for="content">본문</label>
+      <textarea class="form-control" id="content" name="content" rows="5" placeholder="본문을 작성하세요"></textarea>
+    </div>
+
+    <!-- 파일 첨부 -->
+    <div class="form-group">
+      <label for="files">파일 첨부</label>
+      <input type="file" class="form-control-file" id="files" name="files" accept="image/*" multiple />
+    </div>
+
+    <!-- 이미지 미리보기 -->
+    <div class="form-group">
+      <label>이미지 미리보기</label>
+      <div id="upload" style="display: flex; flex-wrap: wrap; gap: 10px; width: 100%; height: auto; border: 1px solid #ddd; background-color: #f5f5f5;">
+        <ul class="image-preview" id="preview-list"></ul>
+      </div>
+    </div>
+
+    <!-- 제출 버튼 -->
+    <button type="submit" class="btn btn-primary">작성하기</button>
+  </form>
+</div>
+
+<!-- 부트스트랩 JS, Popper.js, jQuery CDN 링크 -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+  const dataTransfer = new DataTransfer();
+  const thumbnailIndex = 0; //첫번째 이미지가 대표이미지.
+
+  $("#files").change(function () {
+    const input = document.getElementById("files");
+    const fileArr = input.files;
+    const previewList = document.getElementById("preview-list");
+
+    //파일이 null이 아니면
+    if (fileArr && fileArr.length > 0) {
+      //파일 최대 갯수 제한 : 10개
+      if (dataTransfer.items.length + fileArr.length > 10) {
+        alert("파일은 최대 10개까지 선택할 수 있습니다.");
+        input.value = ""; // 입력 초기화
+        return;
+      }
+
+      //파일 갯수만큼 for문 시행
+      for (let i = 0; i < fileArr.length; i++) {
+        if (!validation(fileArr[i])) {
+          continue; // 유효성 검사에서 걸리면 해당 파일을 건너뛰고 계속 진행
+        }
+        const file = fileArr[i];
+        dataTransfer.items.add(file); //dataTransfer에 file 정보 저장
+
+        const reader = new FileReader();
+
+        //onload이벤트로 이미지태그와 x버튼 만들어 <li>에 담아 목록에 추가
+        reader.onload = function (e) {
+          const li = document.createElement("li");
+          const img = document.createElement("img");
+          img.src = e.target.result;
+
+          // "대표 이미지" 라벨 추가 (처음 이미지에만)
+          if (previewList.children.length === 0) {
+            const label = document.createElement("div");
+            label.className = "representative-label";
+            label.innerText = "대표 이미지";
+            li.appendChild(label);
+          }
+
+          //이미지에 X버튼 배치
+          const button = document.createElement("button");
+          button.innerText = "X";
+          button.className = "remove-button";
+          //X버튼 클릭 이벤트. X버튼 클릭 시 해당 인덱스의 dataTransfer삭제 및 미리보기 삭제
+          button.onclick = function () {
+            const index = Array.from(previewList.children).indexOf(li); //1. 해당 <li>의 인덱스 찾기
+            dataTransfer.items.remove(index); //2. 해당 인덱스의 dataTransfer삭제
+            input.files = dataTransfer.files; //3. input.files 갱신
+            li.remove();  //4. 미리보기 삭제
+
+            // 삭제 후 대표 이미지 다시 지정
+            const allLis = previewList.querySelectorAll("li");
+            allLis.forEach(li => {
+              const existingLabel = li.querySelector(".representative-label");
+              if (existingLabel) existingLabel.remove(); // 기존 라벨 제거
+            });
+            if (allLis.length > 0) {
+              const newLabel = document.createElement("div");
+              newLabel.className = "representative-label";
+              newLabel.innerText = "대표 이미지";
+              allLis[0].appendChild(newLabel);
+            }
+          };
+
+          //li하위에 이미지와 x버튼 넣고 #preview-list에 추가
+          li.appendChild(img);
+          li.appendChild(button);
+          previewList.appendChild(li);
+        };
+
+        //이미지를 base64로 읽어 미리보기
+        reader.readAsDataURL(file);
+      }
+
+      // input.files을 업데이트
+      input.files = dataTransfer.files;
+    }
+    console.log("dataTransfer =>", dataTransfer.files);
+    console.log("input Files =>", document.getElementById("files").files);
+
+    // 파일 검증 함수
+    function validation(file) {
+      const fileTypes = ['image/jpeg', 'image/png', 'image/bmp', 'image/tif'];
+
+      // 파일명 100자 이상
+      if (file.name.length > 100) {
+        alert("파일명이 100자 이상인 파일은 제외되었습니다.");
+        return false;
+      }
+      // 파일 크기 100MB 초과
+      if (file.size > (100 * 1024 * 1024)) {
+        alert("최대 파일 용량인 100MB를 초과한 파일은 제외되었습니다.");
+        return false;
+      }
+      // 확장자 없는 파일
+      if (file.name.lastIndexOf('.') === -1) {
+        alert("확장자가 없는 파일은 제외되었습니다.");
+        return false;
+      }
+      // 허용되지 않는 파일 타입
+      if (!fileTypes.includes(file.type)) {
+        alert("첨부할 파일의 확장자는 jpeg, png, bmp, tif만 가능합니다.");
+        return false;
+      }
+      return true;
+    }
+  });
+
+  //AJAX FORM 전송
+  document.getElementById("form").addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    const formData = new FormData();
+    const title = document.getElementById("title").value.trim();
+    const content = document.getElementById("content").value.trim();
+
+    if(!title){
+      alert("제목을 입력해주세요");
+      return false;
+    }
+
+    if(!content){
+      alert("본문을 입력해주세요");
+      return false;
+    }
+
+    if(dataTransfer.files.length === 0){
+      alert("파일을 첨부해주세요");
+      return false;
+    }
+
+    formData.append("title", title);
+    formData.append("content", content);
+
+    // dataTransfer.files 사용
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      formData.append("files", dataTransfer.files[i]);
+      //thumbnailIndex와 i가 같으면(0이면. 즉, 첫번째 이미지면) 썸네일, 아니면 N
+      const isThumbnail = (i === thumbnailIndex) ? "Y" : "N";
+      formData.append("thumbnailYN", isThumbnail);
+    }
+
+
+    fetch("/api/save", {
+      method: "POST",
+      body: formData,
+    })
+            .then(response => response.text())
+            .then(result => {
+              alert("업로드 완료!");
+              document.getElementById("form").reset();  //form리셋
+              document.getElementById("preview-list").innerHTML = ''; //미리보기 리셋
+              window.location.href = "/list";  //글목록페이지로 이동
+
+              console.log(result);
+            })
+            .catch(error => {
+              alert("업로드 실패");
+              console.error(error);
+            });
+  });
+</script>
+
+</body>
+</html>

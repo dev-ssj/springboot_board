@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>글 상세 조회 페이지</title>
+  <!-- 부트스트랩 CSS 링크 -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .image-container {
+      display: flex;
+      flex-wrap: wrap;  /* 넘치면 다음 줄로 자동 줄바꿈 */
+      gap: 10px;
+    }
+
+    .post-image {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container mt-5">
+  <h2>글 상세 조회</h2>
+
+  <!-- 글 상세 정보 -->
+  <div class="card">
+    <div class="card-body">
+      <input type="hidden" id="articleId" th:value="${article.articleId}">
+      <!-- 제목 -->
+      <div class="form-group">
+        <label for="title">제목</label>
+        <input th:value="${article.title}" type="text" class="form-control" id="title" readonly>
+      </div>
+
+      <!-- 작성일 -->
+      <div class="form-group">
+        <label for="createdDate">작성일</label>
+        <input th:attr="data-created-at=${article.createAt}" type="text" class="form-control created-time" id="createdDate" readonly>
+      </div>
+
+      <!-- 작성자 -->
+      <div class="form-group">
+        <label for="createdDate">작성자</label>
+        <input th:value="${article.email}" type="text" class="form-control created-time" id="email" readonly>
+      </div>
+
+      <!-- 조회수 -->
+      <div class="form-group">
+        <label for="viewCount">조회수</label>
+        <input th:value="${article.views}" type="text" class="form-control" id="viewCount" readonly>
+      </div>
+
+      <!-- 본문 -->
+      <div class="form-group">
+        <label for="content">본문</label>
+        <textarea th:text="${article.content}" class="form-control" id="content" rows="5" readonly>
+        </textarea>
+      </div>
+
+      <!-- 이미지 -->
+      <div class="form-group">
+        <label>첨부 이미지</label><br>
+        <div class="image-container">
+          <img th:each="image:${article.images}" th:src="${image.getS3Url()}"
+               alt="첨부 이미지" class="post-image">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 버튼들 -->
+  <div class="mt-3">
+    <button onclick="location.href='/list'" class="btn btn-secondary">글 목록으로 돌아가기</button>
+    <span th:if="${userEmail == article.email}">
+      <a class="btn btn-warning" th:href="@{/edit/{id}(id=${article.articleId})}">수정</a>
+      <button type="button" id="delete-btn" class="btn btn-danger">삭제</button>
+    </span>
+  </div>
+</div>
+
+<!-- 부트스트랩 JS, Popper.js, jQuery CDN 링크 -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/ko.min.js"></script>
+
+<script>
+  const deleteButton = document.getElementById('delete-btn');
+
+  if(deleteButton){
+    deleteButton.addEventListener('click', event => {
+      if(confirm("정말 게시글을 삭제하시겠습니까?")){
+        let id = document.getElementById('articleId').value;
+        fetch(`/api/articles/${id}`,{
+          method:'DELETE'
+        })
+        .then(()=>{
+        alert('게시글이 삭제 되었습니다.');
+        location.replace('/list');
+        })
+                .catch(err =>{
+                  console.error('삭제 중 오류 발생' , err)
+                  alert('삭제에 실패했습니다.')
+                });
+      }else{
+        return false;
+      }
+
+    })
+  }
+
+
+  //작성 날짜
+  moment.locale('ko'); // 한국어 설정
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const el = document.querySelector(".created-time"); // 단일 요소 선택
+    if (el) {
+      const rawDate = el.dataset.createdAt;
+      if (rawDate) {
+        const now = moment(); // 현재 시간
+        const duration = moment.duration(now.diff(rawDate));
+
+        const seconds = duration.asSeconds();
+        const minutes = duration.asMinutes();
+        const hours = duration.asHours();
+        const days = duration.asDays();
+        const weeks = duration.asWeeks();
+        const months = duration.asMonths();
+        const years = duration.asYears();
+
+        let timeAgo = null;
+
+        if (minutes < 1) {
+          timeAgo = parseInt(seconds) + '초 전';
+        } else if (hours < 1) {
+          timeAgo = parseInt(minutes) + '분 전';
+        } else if (hours < 24) {
+          timeAgo = parseInt(hours) + '시간 전';
+        } else if (weeks < 1) {
+          timeAgo = parseInt(days) + '일 전';
+        } else if (months < 1) {
+          timeAgo = parseInt(weeks) + '주 전';
+        } else if (years < 1) {
+          timeAgo = parseInt(months) + '달 전';
+        } else {
+          timeAgo = parseInt(years) + '년 전';
+        }
+        el.value = timeAgo;
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
